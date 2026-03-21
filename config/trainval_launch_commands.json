@@ -1,13 +1,13 @@
 {
-    "description": "trainval.py 启动不同训练阶段的示例命令。可通过 --train_mode 或配置里的 train_mode 区分 SFT / PPO。",
-    "modes": {
-        "sft": {
-            "config_hint": "建议使用 train_mode=sft 的配置，例如 config-meter.json / config-meter-deterministic.json，或自行在配置中设置。",
-            "command": "accelerate launch trainval.py --cfg ./config/config-meter.json --dataset eth --tag LMTraj-sft-eth --train_mode sft"
-        },
-        "ppo": {
-            "config_hint": "建议使用 train_mode=ppo 的配置，例如 config-pixel.json，或自行在配置中设置。",
-            "command": "accelerate launch trainval.py --cfg ./config/config-pixel.json --dataset eth --tag LMTraj-ppo-eth --train_mode ppo"
-        }
+  "description": "trainval.py 启动不同训练阶段的示例命令。SFT 与 PPO 现已使用独立配置文件；旧的 config-*.json 仅作为兼容入口。",
+  "modes": {
+    "sft": {
+      "config_hint": "建议直接使用独立的 SFT 配置，例如 config/sft-meter.json、config/sft-meter-deterministic.json、config/sft-pixel.json。",
+      "command": "accelerate launch trainval.py --cfg ./config/sft-meter.json --dataset eth --tag LMTraj-sft-eth --train_mode sft"
+    },
+    "ppo": {
+      "config_hint": "建议直接使用独立的 PPO 配置，例如 config/ppo-pixel.json；所有 PPO 可调超参数均位于配置文件中的 ppo 节点。",
+      "command": "accelerate launch trainval.py --cfg ./config/ppo-pixel.json --dataset eth --tag LMTraj-ppo-eth --train_mode ppo"
     }
+  }
 }

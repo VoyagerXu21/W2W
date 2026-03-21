@@ -1,14 +1,37 @@
 import os
 import json
 import argparse
+from copy import deepcopy
+
+
+def _deep_merge_dict(base, override):
+    merged = deepcopy(base)
+    for key, value in override.items():
+        if isinstance(value, dict) and isinstance(merged.get(key), dict):
+            merged[key] = _deep_merge_dict(merged[key], value)
+        else:
+            merged[key] = value
+    return merged
+
+
+def _load_config_with_base(file_path: str):
+    assert os.path.exists(file_path), f"File {file_path} does not exist!"
+    with open(file_path) as f:
+        config = json.load(f)
+
+    base_ref = config.pop("_base_", None)
+    if not base_ref:
+        return config
+
+    base_path = base_ref if os.path.isabs(base_ref) else os.path.join(os.path.dirname(file_path), base_ref)
+    base_config = _load_config_with_base(os.path.normpath(base_path))
+    return _deep_merge_dict(base_config, config)
 
 
 def get_exp_config(file: str):
     r"""Load the configuration files"""
 
-    assert os.path.exists(file), f"File {file} does not exist!"
-    file = open(file)
-    config = json.load(file)
+    config = _load_config_with_base(file)
 
     def recursive_convert(data):
         if isinstance(data, dict):

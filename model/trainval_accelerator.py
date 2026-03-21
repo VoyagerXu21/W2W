@@ -577,24 +577,39 @@ def trainval(cfg):
         remove_columns=column_names,
     )
 
-    # ---------- Reward & Value 模型 ----------
-    # 这里假设你已在别处定义 RewardModel / SharedValueModel
-    reward_model = RewardModel(tokenizer, masks, device, penalty_weight=0.5, l2_weight=1.0, id2scene=id2scene)
-    value_model = SharedValueModel(policy_model_name=cfg.model_name_or_path, freeze_backbone=True).to(device)
+    # ---------- PPO 配置 ----------
+    ppo_cfg = getattr(cfg, "ppo", {})
+    reward_cfg = getattr(ppo_cfg, "reward", {})
+    value_cfg = getattr(ppo_cfg, "value_model", {})
+    lora_cfg_dict = getattr(ppo_cfg, "lora", {})
+    generation_cfg = getattr(ppo_cfg, "generation", {})
+    trainer_cfg = getattr(ppo_cfg, "trainer", {})
+    save_strategy_cfg = getattr(ppo_cfg, "save_strategy", {})
+
+    reward_model = RewardModel(
+        tokenizer,
+        masks,
+        device,
+        penalty_weight=float(reward_cfg.penalty_weight),
+        l2_weight=float(reward_cfg.l2_weight),
+        debug=bool(getattr(reward_cfg, "debug", False)),
+        id2scene=id2scene,
+    )
+    value_model = SharedValueModel(
+        policy_model_name=getattr(value_cfg, "policy_model_name", cfg.model_name_or_path),
+        freeze_backbone=bool(getattr(value_cfg, "freeze_backbone", True)),
+    ).to(device)
     data_collator = DataCollatorForSeq2Seq(
         tokenizer=tokenizer,
         model=model.pretrained_model if hasattr(model, "pretrained_model") else model,
-        label_pad_token_id=-100,  # 训练友好的label padding
-        pad_to_multiple_of=8
+        label_pad_token_id=int(getattr(ppo_cfg, "label_pad_token_id", -100)),
+        pad_to_multiple_of=getattr(ppo_cfg, "pad_to_multiple_of", 8),
     )
 
-    # ---------- PPO 配置 ----------
-    # ------- 稳健构造 PPOConfig（拷贝替换你原来创建 ppo_config 的地方） -------
     import os, torch
     from trl import PPOConfig
 
     def get_world_size_fallback():
-        # robust fallback for world size detection
         if torch.distributed.is_initialized():
             try:
                 return int(torch.distributed.get_world_size())
@@ -614,71 +629,63 @@ def trainval(cfg):
             return max(1, len(cvd.split(",")))
         return 1
 
-    # 你期望的 per-device batch 从 cfg 里读
-    per_device = int(cfg.per_device_train_batch_size)  # e.g., 256
+    per_device = int(getattr(trainer_cfg, "per_device_train_batch_size", cfg.per_device_train_batch_size))
+    grad_accumulation = int(getattr(trainer_cfg, "gradient_accumulation_steps", cfg.gradient_accumulation_steps))
     world_size = get_world_size_fallback()
-    total_batch = per_device * max(1, world_size)
-
-    # 推荐的 num_mini_batches：尽量能分成合理的 local_mini_batch_size
-    # local_mini_batch_size = (per_device * grad_accum) / num_mini_batches  应 >= 8 if whiten_rewards
-    # 这里先给个合理默认（可按需改）
-    guess_num_mini = max(1, min(32, total_batch // max(16, per_device)))  # heuristic fallback
+    total_batch = int(getattr(trainer_cfg, "batch_size", per_device * max(1, world_size)))
+    num_mini_batches = int(getattr(trainer_cfg, "num_mini_batches", 1))
+    mini_batch_size = int(getattr(trainer_cfg, "mini_batch_size", max(1, total_batch // max(1, num_mini_batches))))
 
     ppo_config = PPOConfig(
-        learning_rate=cfg.learning_rate,
-        batch_size=int(total_batch),  # global batch (will be recomputed but safe to set)
-        mini_batch_size=int(max(1, total_batch // guess_num_mini)),
-        num_mini_batches=int(guess_num_mini),
-        per_device_train_batch_size=int(per_device),  # **关键：显式设置 per-device**
-        gradient_accumulation_steps=int(getattr(cfg, "gradient_accumulation_steps", 1)),
-        logging_steps=getattr(cfg, "logging_steps", 10),
-        save_steps=getattr(cfg, "save_steps", 500),
-        eval_steps=getattr(cfg, "eval_steps", None),
-        output_dir=str(checkpoint_path),
-        seed=cfg.seed,
-        remove_unused_columns=False,
-        num_sample_generations=2,
-        save_safetensors=False,
-        num_train_epochs=8,
-        num_ppo_epochs=1,
-        cliprange=0.05,
-        cliprange_value=0.10,
-        whiten_rewards=True,
-        max_grad_norm=0.5,
-        kl_estimator="k3",             # 更稳的 KL 估计器（若已默认则忽略）
-        kl_coef=0.25,                   # 初始 KL 系数偏高一点，牵回参考分布
+        learning_rate=float(trainer_cfg.learning_rate),
+        batch_size=total_batch,
+        mini_batch_size=mini_batch_size,
+        num_mini_batches=num_mini_batches,
+        per_device_train_batch_size=per_device,
+        gradient_accumulation_steps=grad_accumulation,
+        logging_steps=int(trainer_cfg.logging_steps),
+        save_steps=int(trainer_cfg.save_steps),
+        eval_steps=getattr(trainer_cfg, "eval_steps", None),
+        output_dir=str(getattr(trainer_cfg, "output_dir", checkpoint_path)),
+        seed=int(getattr(trainer_cfg, "seed", cfg.seed)),
+        remove_unused_columns=bool(getattr(trainer_cfg, "remove_unused_columns", False)),
+        num_sample_generations=int(trainer_cfg.num_sample_generations),
+        save_safetensors=bool(trainer_cfg.save_safetensors),
+        num_train_epochs=int(trainer_cfg.num_train_epochs),
+        num_ppo_epochs=int(trainer_cfg.num_ppo_epochs),
+        cliprange=float(trainer_cfg.cliprange),
+        cliprange_value=float(trainer_cfg.cliprange_value),
+        whiten_rewards=bool(trainer_cfg.whiten_rewards),
+        max_grad_norm=float(trainer_cfg.max_grad_norm),
+        kl_estimator=str(trainer_cfg.kl_estimator),
+        kl_coef=float(trainer_cfg.kl_coef),
     )
 
-    # >>> 紧接在 ppo_config 下面、创建 PPOTrainer 之前
     is_encdec = bool(getattr(model.config, "is_encoder_decoder", False))
     lora_cfg = LoraConfig(
-        r=16,
-        lora_alpha=32,
-        lora_dropout=0.05,
-        bias="none",
-        target_modules=guess_lora_targets(model),
+        r=int(lora_cfg_dict.r),
+        lora_alpha=int(lora_cfg_dict.lora_alpha),
+        lora_dropout=float(lora_cfg_dict.lora_dropout),
+        bias=str(lora_cfg_dict.bias),
+        target_modules=getattr(lora_cfg_dict, "target_modules", None) or guess_lora_targets(model),
         task_type=(TaskType.SEQ_2_SEQ_LM if is_encdec else TaskType.CAUSAL_LM),
-        inference_mode=False
+        inference_mode=bool(getattr(lora_cfg_dict, "inference_mode", False)),
     )
 
     model.pretrained_model = get_peft_model(model.pretrained_model, lora_cfg)
 
-    # generation kwargs（保留你原来的）
     ppo_config.generation_kwargs = {k: v for k, v in {
-        "max_new_tokens": cfg.get("max_new_tokens", 64),
-        "min_new_tokens": 1,
-        "do_sample": True,
-        "temperature": 0.7,
-        "top_k": 50,
-        "top_p": 0.85,
+        "max_new_tokens": int(generation_cfg.max_new_tokens),
+        "min_new_tokens": int(generation_cfg.min_new_tokens),
+        "do_sample": bool(generation_cfg.do_sample),
+        "temperature": float(generation_cfg.temperature),
+        "top_k": int(generation_cfg.top_k),
+        "top_p": float(generation_cfg.top_p),
         "pad_token_id": int(tokenizer.pad_token_id),
         "eos_token_id": int(tokenizer.eos_token_id) if getattr(tokenizer, "eos_token_id", None) is not None else None,
-        "decoder_start_token_id": int(model.generation_config.decoder_start_token_id) if getattr(model,
-                                                                                                 "generation_config",
-                                                                                                 None) and getattr(
-            model.generation_config, "decoder_start_token_id", None) is not None else None,
-        "return_prompt": False,
-        "remove_invalid_values": True,
+        "decoder_start_token_id": int(model.generation_config.decoder_start_token_id) if getattr(model, "generation_config", None) and getattr(model.generation_config, "decoder_start_token_id", None) is not None else None,
+        "return_prompt": bool(generation_cfg.return_prompt),
+        "remove_invalid_values": bool(generation_cfg.remove_invalid_values),
     }.items() if v is not None}
 
     # Create trainer
@@ -701,12 +708,12 @@ def trainval(cfg):
 
     # === 每个 epoch 保存一次：用“每个 epoch 的 step 数”作为 save_steps ===
     import math
-    updates_per_epoch = max(1, math.ceil(len(train_dataset) / trainer.args.batch_size))
-    trainer.args.save_steps = updates_per_epoch
-    # （可选）日志更细一些
-    trainer.args.logging_steps = max(1, updates_per_epoch // 2)
-
-    print(f"[SAVE POLICY] updates_per_epoch={updates_per_epoch}, save_steps={trainer.args.save_steps}")
+    if getattr(save_strategy_cfg, "save_per_epoch", False):
+        updates_per_epoch = max(1, math.ceil(len(train_dataset) / trainer.args.batch_size))
+        trainer.args.save_steps = updates_per_epoch
+        if bool(getattr(save_strategy_cfg, "sync_logging_with_save", True)):
+            trainer.args.logging_steps = max(1, updates_per_epoch // int(getattr(save_strategy_cfg, "logging_divisor", 2)))
+        print(f"[SAVE POLICY] updates_per_epoch={updates_per_epoch}, save_steps={trainer.args.save_steps}")
 
     # 让辅助资源在 trainer 建好后再放到正确设备
     accel_device = trainer.accelerator.device

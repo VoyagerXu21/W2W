@@ -47,11 +47,11 @@ from transformers.trainer import DEFAULT_CALLBACKS, DEFAULT_PROGRESS_CALLBACK
 from transformers.trainer_callback import CallbackHandler, ExportableState, PrinterCallback
 from transformers.utils import is_peft_available
 
-from ..core import masked_mean, masked_whiten
-from ..models import create_reference_model
-from ..models.utils import unwrap_model_for_generation
-from .ppo_config import PPOConfig
-from .utils import (
+from trl.core import masked_mean, masked_whiten
+from trl.models import create_reference_model
+from trl.models.utils import unwrap_model_for_generation
+from trl.trainer.ppo_config import PPOConfig
+from trl.trainer.utils import (
     OnlineTrainerState,
     batch_generation,
     disable_dropout_in_model,
@@ -1853,4 +1853,3 @@ class PPOTrainer(Trainer):
         )
 
         model_card.save(os.path.join(self.args.output_dir, "README.md"))
-

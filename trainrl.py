@@ -8,7 +8,8 @@ import datasets
 import evaluate
 import numpy as np
 import torch
-from trl import PPOTrainer, PPOConfig
+from trl import PPOConfig
+from utils.ppo_trainer import PPOTrainer
 from accelerate import Accelerator
 from accelerate.logging import get_logger
 from accelerate.utils import set_seed
@@ -42,7 +43,8 @@ def preprocess_function(examples):
 
 
 from accelerate import Accelerator
-from trl import PPOTrainer, PPOConfig
+from trl import PPOConfig
+from utils.ppo_trainer import PPOTrainer
 
 
 def main_rl_training(cfg, tokenizer, train_dataset, masks):

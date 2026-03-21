@@ -16,11 +16,13 @@ from transformers import (
 )
 from trl import (
     AutoModelForSeq2SeqLMWithValueHead, create_reference_model,
-    PPOTrainer, PPOConfig
+    PPOConfig
 )
+from utils.ppo_trainer import PPOTrainer
 import numpy as np
 import torch
-from trl import PPOTrainer, PPOConfig
+from trl import PPOConfig
+from utils.ppo_trainer import PPOTrainer
 from accelerate import Accelerator
 from accelerate.logging import get_logger
 from utils.converter import text2traj, batch_text2traj
@@ -368,8 +370,9 @@ def trainval(cfg):
     )
     from trl import (
         AutoModelForSeq2SeqLMWithValueHead, create_reference_model,
-        PPOTrainer, PPOConfig
+        PPOConfig
     )
+    from utils.ppo_trainer import PPOTrainer
 
     # ---------- 初始化 ----------
     init_nltk()

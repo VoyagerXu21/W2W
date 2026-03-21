@@ -1,0 +1,73 @@
+{
+  "_base_": "base-pixel.json",
+  "train_mode": "ppo",
+  "model_name_or_path": "./checkpoint/RLbegin/",
+  "max_target_length": 64,
+  "per_device_train_batch_size": 512,
+  "per_device_eval_batch_size": 256,
+  "learning_rate": 1e-07,
+  "ce_checkpoint_dir": "./checkpoint/RLbegin/",
+  "rl_checkpoint_dir": "./checkpoint/RLresult/",
+  "use_safetensors": true,
+  "device": "cuda",
+  "ppo": {
+    "label_pad_token_id": -100,
+    "pad_to_multiple_of": 8,
+    "reward": {
+      "penalty_weight": 0.5,
+      "l2_weight": 1.0,
+      "debug": false
+    },
+    "value_model": {
+      "policy_model_name": "./checkpoint/RLbegin/",
+      "freeze_backbone": true
+    },
+    "lora": {
+      "r": 16,
+      "lora_alpha": 32,
+      "lora_dropout": 0.05,
+      "bias": "none",
+      "target_modules": null,
+      "inference_mode": false
+    },
+    "generation": {
+      "max_new_tokens": 64,
+      "min_new_tokens": 1,
+      "do_sample": true,
+      "temperature": 0.7,
+      "top_k": 50,
+      "top_p": 0.85,
+      "return_prompt": false,
+      "remove_invalid_values": true
+    },
+    "trainer": {
+      "learning_rate": 1e-07,
+      "per_device_train_batch_size": 512,
+      "gradient_accumulation_steps": 1,
+      "batch_size": 512,
+      "mini_batch_size": 512,
+      "num_mini_batches": 1,
+      "logging_steps": 10,
+      "save_steps": 500,
+      "eval_steps": null,
+      "output_dir": "./checkpoint/RLresult/",
+      "seed": 0,
+      "remove_unused_columns": false,
+      "num_sample_generations": 2,
+      "save_safetensors": false,
+      "num_train_epochs": 8,
+      "num_ppo_epochs": 1,
+      "cliprange": 0.05,
+      "cliprange_value": 0.1,
+      "whiten_rewards": true,
+      "max_grad_norm": 0.5,
+      "kl_estimator": "k3",
+      "kl_coef": 0.25
+    },
+    "save_strategy": {
+      "save_per_epoch": true,
+      "sync_logging_with_save": true,
+      "logging_divisor": 2
+    }
+  }
+}

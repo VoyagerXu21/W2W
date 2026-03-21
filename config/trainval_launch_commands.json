@@ -1,0 +1,13 @@
+{
+    "description": "trainval.py 启动不同训练阶段的示例命令。可通过 --train_mode 或配置里的 train_mode 区分 SFT / PPO。",
+    "modes": {
+        "sft": {
+            "config_hint": "建议使用 train_mode=sft 的配置，例如 config-meter.json / config-meter-deterministic.json，或自行在配置中设置。",
+            "command": "accelerate launch trainval.py --cfg ./config/config-meter.json --dataset eth --tag LMTraj-sft-eth --train_mode sft"
+        },
+        "ppo": {
+            "config_hint": "建议使用 train_mode=ppo 的配置，例如 config-pixel.json，或自行在配置中设置。",
+            "command": "accelerate launch trainval.py --cfg ./config/config-pixel.json --dataset eth --tag LMTraj-ppo-eth --train_mode ppo"
+        }
+    }
+}

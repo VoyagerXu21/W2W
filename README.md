@@ -8,15 +8,16 @@
 
 W2W 通过将轨迹预测任务建模为语言建模问题，并结合强化学习进行后训练优化，以提升多步轨迹预测性能。
 
-## 论文流程图（占位）
+## 论文流程图
 
-> 在你准备好图片后，将下方占位路径替换为真实文件路径即可。
+> 你上传图片后，下面这行要**直接写在正文里**（不能放在代码块里），这样 Markdown 才会渲染图片。
 
-```markdown
-![W2W Pipeline](./assets/pipeline.png)
-```
+![W2W Pipeline](./assets/w2w_pipeline.png)
 
-（建议将流程图文件放在 `assets/` 目录下，命名为 `w2w_pipeline.png`。）
+如果仍不显示，请检查：
+- 图片文件是否真实存在于 `assets/w2w_pipeline.png`。
+- 文件名大小写是否完全一致（`W2W_Pipeline.png` 与 `w2w_pipeline.png` 会被视为不同文件）。
+- 图片是否已经被 `git add` 并提交。
 
 ## 环境依赖
 

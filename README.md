@@ -12,7 +12,7 @@ W2W 通过将轨迹预测任务建模为语言建模问题，并结合强化学�
 
 > 你上传图片后，下面这行要**直接写在正文里**（不能放在代码块里），这样 Markdown 才会渲染图片。
 
-![W2W Pipeline](./assets/w2w_pipeline.png)
+![W2W Pipeline](./assets/pipeline.png)
 
 如果仍不显示，请检查：
 - 图片文件是否真实存在于 `assets/w2w_pipeline.png`。

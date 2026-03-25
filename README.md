@@ -13,7 +13,7 @@ W2W 通过将轨迹预测任务建模为语言建模问题，并结合强化学�
 > 在你准备好图片后，将下方占位路径替换为真实文件路径即可。
 
 ```markdown
-![W2W Pipeline](./assets/w2w_pipeline.png)
+![W2W Pipeline](./assets/pipeline.png)
 ```
 
 （建议将流程图文件放在 `assets/` 目录下，命名为 `w2w_pipeline.png`。）
